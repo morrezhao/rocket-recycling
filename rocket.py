@@ -73,7 +73,7 @@ class Rocket(object):
 
 
     def reset(self, state_dict=None):
-
+        # 全部重置
         if state_dict is None:
             self.state = self.create_random_state()
         else:
@@ -86,6 +86,7 @@ class Rocket(object):
         return self.flatten(self.state)
 
     def create_action_table(self):
+        # 动作空间，选择喷气的角度和推力
         f0 = 0.2 * self.g  # thrust
         f1 = 1.0 * self.g
         f2 = 2 * self.g
@@ -100,9 +101,13 @@ class Rocket(object):
         return action_table
 
     def get_random_action(self):
+        # 随机选取一个动作
         return random.randint(0, len(self.action_table)-1)
 
     def create_random_state(self):
+        # 创造随机状态：如果任务是landing，那么x随机选取，但高度y固定theta和vy都是固定的；
+        # 如果任务是hover，那么theta是随机的，其它固定
+        # Q: vy是什么
 
         # predefined locations
         x_range = self.world_x_max - self.world_x_min
@@ -135,6 +140,8 @@ class Rocket(object):
         return state
 
     def check_crash(self, state):
+        # 判断是否撞毁：landing的时候，如果速度/角度/角速度过大会被判定为撞毁
+        # Q能否把这个作为reward？
         if self.task == 'hover':
             x, y = state['x'], state['y']
             theta = state['theta']
@@ -166,6 +173,7 @@ class Rocket(object):
             return crash
 
     def check_landing_success(self, state):
+        # 判定是否成功着陆
         if self.task == 'hover':
             return False
         elif self.task == 'landing':
@@ -197,6 +205,7 @@ class Rocket(object):
 
         reward = dist_reward + pose_reward
 
+        # 只要能hit target，上面那些都不看了。否则角度小+距离近的奖励高
         if self.task == 'hover' and (dist_x**2 + dist_y**2)**0.5 <= 2*self.target_r:  # hit target
             reward = 0.25
         if self.task == 'hover' and (dist_x**2 + dist_y**2)**0.5 <= 1*self.target_r:  # hit target
@@ -213,7 +222,8 @@ class Rocket(object):
         return reward
 
     def step(self, action):
-
+        # 状态之间如何演化？选取一个给定动作之后，计算新的速度和位置。
+        # 间隔多久选一个动作？dt=0.05
         x, y, vx, vy = self.state['x'], self.state['y'], self.state['vx'], self.state['vy']
         theta, vtheta = self.state['theta'], self.state['vtheta']
         phi = self.state['phi']
@@ -273,6 +283,7 @@ class Rocket(object):
     def render(self, window_name='env', wait_time=1,
                with_trajectory=True, with_camera_tracking=True,
                crop_scale=0.4):
+        # 用来渲染动画
 
         canvas = np.copy(self.bg_img)
         polys = self.create_polygons()

@@ -12,9 +12,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == '__main__':
 
-    task = 'hover'  # 'hover' or 'landing'
+    task = 'landing'  # 'hover' or 'landing'
 
-    max_m_episode = 800000
+    max_m_episode = 10000
     max_steps = 800
 
     env = Rocket(task=task, max_steps=max_steps)
@@ -48,9 +48,10 @@ if __name__ == '__main__':
             if episode_id % 100 == 1:
                 env.render()
 
-            if done or step_id == max_steps-1:
+            if done or step_id == max_steps-1:    
                 _, _, Qval = net.get_action(state)
                 net.update_ac(net, rewards, log_probs, values, masks, Qval, gamma=0.999)
+                # 每800轮更新一波参数
                 break
 
         REWARDS.append(np.sum(rewards))

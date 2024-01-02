@@ -11,6 +11,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_returns(next_value, rewards, masks, gamma=0.99):
+    # Q值是逐步向前计算的。折现因子取的0.99，如果done的话mask=0
     R = next_value
     returns = []
     for step in reversed(range(len(rewards))):
@@ -89,7 +90,9 @@ class ActorCritic(nn.Module):
 
         self.output_dim = output_dim
         self.actor = MLP(input_dim=input_dim, output_dim=output_dim)
+        # 用来选择动作，output_dim=9
         self.critic = MLP(input_dim=input_dim, output_dim=1)
+        # 用来评价动作的好坏,output_dim=1
         self.softmax = nn.Softmax(dim=-1)
 
         self.optimizer = optim.RMSprop(self.parameters(), lr=5e-5)
@@ -103,7 +106,8 @@ class ActorCritic(nn.Module):
         return probs, value
 
     def get_action(self, state, deterministic=False, exploration=0.01):
-
+        # 选择动作分两种情况，如果deterministic就直接选probability最大的。
+        # 否则有0.01概率探索（也就是完全随机选），剩余情况按照probs的概率选择
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
         probs, value = self.forward(state)
         probs = probs[0, :]
@@ -133,10 +137,13 @@ class ActorCritic(nn.Module):
 
         advantage = Qvals - values
         actor_loss = (-log_probs * advantage.detach()).mean()
+        # 通过最大化预测的动作概率（即log_probs）和优势值的乘积来鼓励模型做出正确的动作选择。
         critic_loss = 0.5 * advantage.pow(2).mean()
+        # 通过最小化优势值的平方来使预测的状态值与计算得到的Q值更接近。我们希望reviewer可以尽量预测的准
         ac_loss = actor_loss + critic_loss
 
         network.optimizer.zero_grad()
         ac_loss.backward()
+        # 同时更新两个网络
         network.optimizer.step()
 
